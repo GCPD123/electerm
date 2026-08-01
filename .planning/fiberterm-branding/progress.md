@@ -30,3 +30,6 @@
 - 已将展示字段由 Electron 标准 `productName` 改为隔离的 `displayName`，避免潜在用户数据目录变化。
 - 品牌专项回归测试扩展为 3 项，3/3 通过；针对性规范检查、正式构建和差异检查通过。
 - 全套单元测试：71 项中 66 项通过；5 项 SSH agent 测试因 Windows `ssh-agent` 服务被禁用（错误 1058）而失败，与本次品牌改动无关。
+- 已创建功能提交 `581aed69`：FiberTerm 界面品牌、水印和专项回归测试。
+- 已创建规范提交 `9fea9311`：品牌计划、官方高清 Logo 待办和强制质量门禁。
+- 已推送 `codex/branding-name` 到 `origin`；尚未合并 `codex/smartterm-main`。
