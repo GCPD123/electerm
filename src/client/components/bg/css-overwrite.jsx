@@ -105,7 +105,7 @@ async function createGlobalStyle (props) {
   const st = await createBackgroundStyle(props.terminalBackgroundImagePath)
   if (!st) {
     return '#container .session-batch-active .xterm-screen::before {' +
-    'background-image: url("./images/electerm-watermark.png");' +
+    'background-image: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27766%27 height=%27266%27 viewBox=%270 0 766 266%27%3E%3Ctext x=%27383%27 y=%27172%27 text-anchor=%27middle%27 font-family=%27Arial,sans-serif%27 font-size=%27118%27 font-weight=%27700%27 font-style=%27italic%27 fill=%27%238f8f8f%27%3EFiberHome%3C/text%3E%3C/svg%3E");' +
     '}'
   }
 

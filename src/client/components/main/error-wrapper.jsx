@@ -83,7 +83,7 @@ export default class ErrorBoundary extends React.PureComponent {
     return (
       <div className='pd1y wordbreak'>
         <h2>{e('troubleShoot')}</h2>
-        <p>Electerm Version: {packInfo.version}, OS: {os}</p>
+        <p>{packInfo.displayName || packInfo.name} Version: {packInfo.version}, OS: {os}</p>
         {
           Object.keys(troubleshootContent).map((k, i) => {
             const v = troubleshootContent[k]

@@ -1,10 +1,78 @@
-.logo-img
-  height 80px
-.logo-img-small
-  height 28px
-  border-radius 28px
+.fiberterm-brand
+  display flex
+  align-items center
+  gap 18px
+  color inherit
+
+.fiberterm-mark
+  display inline-flex
+  align-items center
+  justify-content center
+  width 68px
+  height 68px
+  flex 0 0 68px
+  border-radius 14px
+  color #fff
+  font-size 28px
+  font-weight 700
+  letter-spacing -1px
+  background linear-gradient(145deg, #1677d2, #0f54a8)
+  box-shadow inset 0 0 0 1px rgba(255, 255, 255, .12), 0 8px 24px rgba(15, 84, 168, .22)
+  position relative
+
+.fiberterm-mark::after
+  content ''
+  position absolute
+  top 8px
+  right 7px
+  width 18px
+  height 3px
+  border-radius 2px
+  background #ff6b26
+  transform rotate(-12deg)
+
+.fiberterm-brand-copy
+  display flex
+  flex-direction column
+  min-width 0
+
+.fiberterm-name-row
+  display flex
+  align-items center
+  gap 12px
+  flex-wrap wrap
+
+.fiberterm-product-name
+  font-size 38px
+  font-weight 650
+  line-height 1.15
+  letter-spacing -.8px
+
+.fiberterm-company
+  font-size 15px
+  font-weight 400
+  opacity .62
+
+.fiberterm-tagline
+  margin-top 6px
+  font-size 15px
+  font-weight 400
+  letter-spacing 2px
+  opacity .72
+
 @media (max-width: 500px)
-  .logo-img
-    height 40px
-  .logo-img-small
-    height 20px
+  .fiberterm-brand
+    gap 12px
+  .fiberterm-mark
+    width 48px
+    height 48px
+    flex-basis 48px
+    border-radius 10px
+    font-size 20px
+  .fiberterm-product-name
+    font-size 26px
+  .fiberterm-company
+    font-size 12px
+  .fiberterm-tagline
+    font-size 12px
+    letter-spacing 1px

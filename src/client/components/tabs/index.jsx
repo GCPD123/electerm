@@ -21,7 +21,8 @@ import {
   tabMargin,
   extraTabWidth,
   windowControlWidth,
-  isMacJs
+  isMacJs,
+  packInfo
 } from '../../common/constants'
 import WindowControl from './window-control'
 import AddBtn from './add-btn'
@@ -271,52 +272,63 @@ export default class Tabs extends Component {
     const w1 = isMacJs && (config.useSystemTitleBar || window.et.isWebApp)
       ? 30
       : this.getExtraTabWidth()
+    const brandWidth = 176
     const style = {
-      width: width - w1 - 166
+      width: width - w1 - 166 - brandWidth,
+      marginLeft: brandWidth
     }
     return (
-      <div
-        className='tabs-inner'
-        ref={this.domRef}
-        style={style}
-      >
-        <div
-          style={{
-            left
-          }}
-        />
-        <div
-          className='tabs-wrapper relative'
-          style={{
-            width: tabsWidthAll + extraTabWidth + 10
-          }}
-          onDoubleClick={this.handleAdd}
-        >
-          {
-            tabs.map((tab, i) => {
-              const isLast = i === len - 1
-              const tabProps = {
-                ...this.props,
-                tab,
-                isLast,
-                addTab: this.handleTabAdd,
-                tabIndex: i
-              }
-              return (
-                <Tab
-                  {...tabProps}
-                  key={tab.id}
-                />
-              )
-            })
-          }
-          {
-            overflow
-              ? null
-              : this.renderAddBtn()
-          }
+      <>
+        <div className='fiberterm-title-brand' title={`${packInfo.displayName || packInfo.name} by ${packInfo.companyName || 'FiberHome'}`}>
+          <span className='fiberterm-title-mark'>FT</span>
+          <span className='fiberterm-title-copy'>
+            <span className='fiberterm-title-name'>{packInfo.displayName || packInfo.name}</span>
+            <span className='fiberterm-title-company'>by {packInfo.companyName || 'FiberHome'}</span>
+          </span>
         </div>
-      </div>
+        <div
+          className='tabs-inner'
+          ref={this.domRef}
+          style={style}
+        >
+          <div
+            style={{
+              left
+            }}
+          />
+          <div
+            className='tabs-wrapper relative'
+            style={{
+              width: tabsWidthAll + extraTabWidth + 10
+            }}
+            onDoubleClick={this.handleAdd}
+          >
+            {
+              tabs.map((tab, i) => {
+                const isLast = i === len - 1
+                const tabProps = {
+                  ...this.props,
+                  tab,
+                  isLast,
+                  addTab: this.handleTabAdd,
+                  tabIndex: i
+                }
+                return (
+                  <Tab
+                    {...tabProps}
+                    key={tab.id}
+                  />
+                )
+              })
+            }
+            {
+              overflow
+                ? null
+                : this.renderAddBtn()
+            }
+          </div>
+        </div>
+      </>
     )
   }
 

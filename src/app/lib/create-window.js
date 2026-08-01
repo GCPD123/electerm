@@ -33,7 +33,7 @@ exports.createWindow = async function (userConfig) {
     fullscreenable: true,
     minWidth: minWindowWidth,
     minHeight: minWindowHeight,
-    title: packInfo.name,
+    title: packInfo.displayName || packInfo.name,
     frame: useSystemTitleBar,
     transparent: !useSystemTitleBar,
     backgroundColor: '#333333',

@@ -186,7 +186,7 @@ function buildMenu () {
 
   if (process.platform === 'darwin') {
     template.unshift({
-      label: app.name,
+      label: packInfo.displayName || app.name,
       submenu: [
         {
           role: 'services',

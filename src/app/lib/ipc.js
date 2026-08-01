@@ -212,7 +212,8 @@ function initIpc () {
     stopStream,
     setTitle: (title) => {
       const win = globalState.get('win')
-      win && win.setTitle(packInfo.name + ' - ' + title)
+      const displayName = packInfo.displayName || packInfo.name
+      win && win.setTitle(displayName + ' - ' + title)
     },
     setBackgroundColor: (color = '#33333300') => {
       const win = globalState.get('win')

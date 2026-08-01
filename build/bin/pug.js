@@ -30,7 +30,7 @@ const defaultAIPreset = {
 
 const data = {
   version: pack.version,
-  siteName: pack.name,
+  siteName: pack.displayName || pack.name,
   isDev: false,
   defaultAIPreset
 }
