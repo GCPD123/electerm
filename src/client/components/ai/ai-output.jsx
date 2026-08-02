@@ -21,7 +21,8 @@ export default function AIOutput ({ item }) {
     response,
     baseURLAI,
     nameAI,
-    modelAI
+    modelAI,
+    knowledgeEvidence = []
   } = item
 
   useEffect(() => {
@@ -143,6 +144,20 @@ export default function AIOutput ({ item }) {
     )
   }
 
+  function renderKnowledgeEvidence () {
+    if (!knowledgeEvidence.length) return null
+    return (
+      <div className='ai-knowledge-evidence'>
+        <b>FiberHome knowledge sources</b>
+        {knowledgeEvidence.map((evidence, index) => (
+          <Tag key={evidence.chunkId} className='mg1l mg1t'>
+            [E{index + 1}] {evidence.source.title} · {evidence.source.worksheet} · {evidence.source.section} · row {evidence.source.row}
+          </Tag>
+        ))}
+      </div>
+    )
+  }
+
   const mdProps = {
     children: response,
     components: {
@@ -159,6 +174,7 @@ export default function AIOutput ({ item }) {
           : (
             <>
               {renderBrand()}
+              {renderKnowledgeEvidence()}
               <ReactMarkdown {...mdProps} />
             </>
             )}

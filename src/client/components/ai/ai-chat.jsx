@@ -3,6 +3,7 @@ import { Flex, Input, Segmented, Button } from 'antd'
 import TabSelect from '../footer/tab-select'
 import AiChatHistory from './ai-chat-history'
 import AiChatSessions from './ai-chat-sessions'
+import KnowledgeBaseModal from './knowledge-base-modal'
 import uid from '../../common/uid'
 import { pick } from 'lodash-es'
 import {
@@ -10,7 +11,8 @@ import {
   SendOutlined,
   PlusOutlined,
   HistoryOutlined,
-  CompressOutlined
+  CompressOutlined,
+  DatabaseOutlined
 } from '@ant-design/icons'
 import {
   aiConfigWikiLink,
@@ -27,6 +29,7 @@ const MAX_HISTORY = 500
 export default function AIChat (props) {
   const [prompt, setPrompt] = useState('')
   const [compressing, setCompressing] = useState(false)
+  const [showKnowledgeBase, setShowKnowledgeBase] = useState(false)
   const [mode, setMode] = useState(() => getItem(aiChatModeLsKey) || 'ask')
   const isAgent = mode === 'agent'
   const submitDisabled = isAgent && props.agentRunning
@@ -224,6 +227,13 @@ export default function AIChat (props) {
           >
             {e('history')}
           </Button>
+          <Button
+            size='small'
+            icon={<DatabaseOutlined />}
+            onClick={() => setShowKnowledgeBase(true)}
+          >
+            Knowledge
+          </Button>
         </Flex>
         <TextArea
           value={prompt}
@@ -256,6 +266,7 @@ export default function AIChat (props) {
       {window.et.AIDisclamer && (
         <div className='ai-disclamer mg1t'>{window.et.AIDisclamer}</div>
       )}
+      <KnowledgeBaseModal open={showKnowledgeBase} onClose={() => setShowKnowledgeBase(false)} />
     </Flex>
   )
 }

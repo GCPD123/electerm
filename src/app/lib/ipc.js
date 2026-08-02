@@ -70,6 +70,12 @@ const { initCommandLine } = require('./command-line')
 const { watchFile, unwatchFile } = require('./watch-file')
 const lookup = require('../common/lookup')
 const { AIchat, AIchatWithTools, getStreamContent, stopStream } = require('./ai')
+const { resolve } = require('node:path')
+const { createKnowledgeBase } = require('./knowledge/knowledge-base')
+
+const knowledgeBase = createKnowledgeBase({
+  dataDirectory: resolve(appPath, 'electerm', 'knowledge')
+})
 
 // Security: whitelist of safe environment variables for Linux/Mac/Windows
 const SAFE_ENV_KEYS = [
@@ -210,6 +216,12 @@ function initIpc () {
     AIchatWithTools,
     getStreamContent,
     stopStream,
+    importKnowledgeDocuments: (filePaths, options) => knowledgeBase.importDocuments(filePaths, options),
+    searchKnowledge: (query, context) => knowledgeBase.searchKnowledge(query, context),
+    listKnowledgeDocuments: () => knowledgeBase.listDocuments(),
+    removeKnowledgeDocument: documentId => knowledgeBase.removeDocument(documentId),
+    rebuildKnowledgeIndex: () => knowledgeBase.rebuildIndex(),
+    getKnowledgeStatus: () => knowledgeBase.getKnowledgeStatus(),
     setTitle: (title) => {
       const win = globalState.get('win')
       win && win.setTitle(packInfo.name + ' - ' + title)
