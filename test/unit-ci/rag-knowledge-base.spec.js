@@ -29,7 +29,7 @@ async function createTempKnowledgeBase () {
       description: '查看设备时钟同步状态',
       usageScope: '二线',
       example: '',
-      expertNotes: '',
+      expertNotes: '密码字段不得进入知识库',
       source: { worksheet: 'SPN Commands', section: 'Protocol queries', row: 3 }
     }]
   })
@@ -48,6 +48,7 @@ describe('KnowledgeBase', () => {
     const firstImport = await knowledge.importDocuments([sourcePath])
     assert.equal(firstImport.imported.length, 1)
     assert.equal(firstImport.imported[0].unitCount, 2)
+    assert.equal(firstImport.imported[0].warnings.length, 1)
 
     const chineseResults = await knowledge.searchKnowledge('查看端口状态')
     assert.equal(chineseResults.length > 0, true)
@@ -62,6 +63,7 @@ describe('KnowledgeBase', () => {
 
     const cliResults = await knowledge.searchKnowledge('GE1/1/1')
     assert.equal(cliResults[0].matchReasons.includes('cli:ge1/1/1'), true)
+    assert.deepEqual(await knowledge.searchKnowledge('密码字段'), [])
 
     const duplicate = await knowledge.importDocuments([sourcePath])
     assert.equal(duplicate.duplicates.length, 1)

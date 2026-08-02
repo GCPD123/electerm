@@ -45,6 +45,21 @@ function unitContent (unit) {
   ].filter(Boolean).join('\n')
 }
 
+function sanitizeUnit (unit) {
+  const sanitized = { ...unit }
+  const warnings = []
+  if (SENSITIVE_PATTERN.test(String(unit.command || ''))) {
+    return { unit: null, warnings: ['command'] }
+  }
+  for (const field of ['commandView', 'description', 'usageScope', 'example', 'expertNotes']) {
+    if (SENSITIVE_PATTERN.test(String(unit[field] || ''))) {
+      sanitized[field] = ''
+      warnings.push(field)
+    }
+  }
+  return { unit: sanitized, warnings }
+}
+
 function buildIndex (units) {
   const index = new Map()
   for (const unit of units) {
@@ -132,10 +147,13 @@ function createKnowledgeBase ({ dataDirectory, parser = parseXlsxCommandWorkbook
 
     const parsed = await parser(filePath)
     const parsedUnits = Array.isArray(parsed.units) ? parsed.units : []
-    if (!parsedUnits.length) throw new Error('No command units were found in the XLSX document')
-    if (parsedUnits.some(unit => SENSITIVE_PATTERN.test(unitContent(unit)))) {
-      throw new Error('Sensitive credential-like content was found; document was not indexed')
-    }
+    const sanitizedUnits = parsedUnits.map(sanitizeUnit)
+    const safeUnits = sanitizedUnits.map(result => result.unit).filter(Boolean)
+    const warnings = sanitizedUnits.flatMap((result, index) => result.warnings.map(field => ({
+      row: parsedUnits[index].source.row,
+      field
+    })))
+    if (!safeUnits.length) throw new Error('No safe command units were found in the XLSX document')
 
     const id = `doc-${sha256.slice(0, 24)}`
     const document = {
@@ -151,9 +169,10 @@ function createKnowledgeBase ({ dataDirectory, parser = parseXlsxCommandWorkbook
       deviceModels: options.deviceModels || [],
       softwareVersions: options.softwareVersions || [],
       worksheets: parsed.worksheets || [],
-      unitCount: parsedUnits.length
+      unitCount: safeUnits.length,
+      warnings
     }
-    const units = parsedUnits.map((unit, ordinal) => ({
+    const units = safeUnits.map((unit, ordinal) => ({
       ...unit,
       id: `${id}:${unit.source.worksheet}:${unit.source.row}:${ordinal}`,
       documentId: id,
