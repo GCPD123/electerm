@@ -1,10 +1,18 @@
 const { describe, it } = require('node:test')
 const assert = require('node:assert/strict')
+const fs = require('node:fs/promises')
+const path = require('node:path')
 
-const { selectReliableEvidence } = require('../../src/client/components/ai/knowledge-routing')
+async function loadKnowledgeRouting () {
+  const filePath = path.resolve(__dirname, '../../src/client/components/ai/knowledge-routing.js')
+  const source = await fs.readFile(filePath, 'utf8')
+  const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`
+  return import(moduleUrl)
+}
 
 describe('Ask knowledge routing', () => {
-  it('uses only strong private-knowledge matches and leaves weak matches to normal AI', () => {
+  it('exports the browser-loadable routing function and leaves weak matches to normal AI', async () => {
+    const { selectReliableEvidence } = await loadKnowledgeRouting()
     const evidence = [
       { chunkId: 'port', score: 9 },
       { chunkId: 'clock', score: 6 },
