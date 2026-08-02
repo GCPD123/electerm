@@ -5,16 +5,21 @@ const path = require('node:path')
 const { parseXlsxCommandWorkbook } = require('./xlsx-parser')
 
 const SCHEMA_VERSION = 1
-const TOKENIZER_VERSION = 'zh-cli-ngrams-v1'
+const TOKENIZER_VERSION = 'zh-cli-ngrams-v2'
 const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024
 const SENSITIVE_PATTERN = /(?:password|passwd|private\s*key|\btoken\b|用户名|密码|密钥|口令)/i
 const GENERIC_QUERY_TOKENS = new Set(['查看', '设备', '状态', '信息', '命令', '查询'])
+const GENERIC_CHINESE_PHRASES = /查看|设备|状态|信息|命令|查询/g
 
 function tokenize (input) {
   const value = String(input || '').toLowerCase()
   const tokens = new Set()
+  const specificTokens = new Set()
   const asciiTokens = value.match(/[a-z0-9][a-z0-9_./:-]*/g) || []
-  asciiTokens.forEach(token => tokens.add(token))
+  asciiTokens.forEach(token => {
+    tokens.add(token)
+    specificTokens.add(token)
+  })
 
   const chineseRuns = value.match(/[\u3400-\u9fff]+/g) || []
   for (const run of chineseRuns) {
@@ -27,9 +32,15 @@ function tokenize (input) {
         tokens.add(run.slice(index, index + size))
       }
     }
+    const specificRun = run.replace(GENERIC_CHINESE_PHRASES, '')
+    for (let size = 2; size <= Math.min(3, specificRun.length); size++) {
+      for (let index = 0; index <= specificRun.length - size; index++) {
+        specificTokens.add(specificRun.slice(index, index + size))
+      }
+    }
   }
-  const specificTokens = [...tokens].filter(token => !GENERIC_QUERY_TOKENS.has(token))
-  return specificTokens.length ? specificTokens : [...tokens]
+  const filteredTokens = [...specificTokens].filter(token => !GENERIC_QUERY_TOKENS.has(token))
+  return filteredTokens.length ? filteredTokens : [...tokens]
 }
 
 function isCliToken (token) {
@@ -67,7 +78,7 @@ function buildIndex (units) {
   for (const unit of units) {
     const fields = [
       ['command', unit.command, 4],
-      ['description', unit.description, 3],
+      ['description', unit.description, 4],
       ['commandView', unit.commandView, 2],
       ['usageScope', unit.usageScope, 1],
       ['example', unit.example, 1],

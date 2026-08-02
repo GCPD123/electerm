@@ -4,7 +4,7 @@ const fs = require('node:fs/promises')
 const os = require('node:os')
 const path = require('node:path')
 
-const { createKnowledgeBase } = require('../../src/app/lib/knowledge/knowledge-base')
+const { createKnowledgeBase, tokenize } = require('../../src/app/lib/knowledge/knowledge-base')
 
 async function createTempKnowledgeBase () {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'fiberterm-kb-'))
@@ -41,6 +41,15 @@ async function createTempKnowledgeBase () {
 }
 
 describe('KnowledgeBase', () => {
+  it('keeps specific Chinese terms while ignoring boilerplate query wording', () => {
+    const tokens = tokenize('查看设备时钟状态')
+
+    assert.equal(tokens.includes('时钟'), true)
+    assert.equal(tokens.includes('查看设'), false)
+    assert.equal(tokens.includes('设备'), false)
+    assert.equal(tokens.includes('状态'), false)
+  })
+
   it('persists structured XLSX units, searches Chinese/CLI tokens, deduplicates and removes', async () => {
     const { sourcePath, dataDirectory, parser } = await createTempKnowledgeBase()
     const knowledge = createKnowledgeBase({ dataDirectory, parser })
