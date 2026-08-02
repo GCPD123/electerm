@@ -11,6 +11,7 @@
 | [ADR-001：Fork 与分支策略](decisions/001-fork-and-branch-strategy.md) | 新建分支、合并、向官方贡献代码 |
 | [ADR-002：AI 统一执行网关](decisions/002-ai-execution-gateway.md) | 开发 AI 命令执行、审批、安全或审计功能 |
 | [AI 命令执行研究](research/ai-command-execution-study.md) | 需要源码级调用链和风险证据时 |
+| [AI 授权模式研究](research/ai-approval-modes-study.md) | 设计 Ask/Agent 边界、三档授权、作用域和撤销时 |
 
 ## 文档维护规则
 

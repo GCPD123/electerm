@@ -32,7 +32,9 @@ FiberTerm 是基于 Electerm 二次开发的企业智能运维终端，面向 Fi
 ## AI 与命令执行安全边界
 
 - AI 生成的命令、Ask 代码块、内置 Agent 和 MCP 变更型工具最终必须经过统一执行策略。
-- 未经审批不得向 PTY、SSH 会话或设备 CLI 写入命令。
+- Agent 授权档位只能改变网关的审批结果，不能绕过网关；自动执行必须有明确的会话、目标和风险范围。
+- 未经用户明确批准或当前会话策略自动许可，不得向 PTY、SSH 会话或设备 CLI 写入命令。
+- “替我审批”和“受控完全执行”仍受严重风险硬阻断、组织策略、目标变化、批量设备和凭据输入等安全底线约束。
 - 提示词 guardrail 不是安全边界；黑白名单正则也不能单独承担完整安全控制。
 - 涉及命令执行、SFTP 删除、批量设备、凭据或审计的修改，先阅读 [AI 命令执行研究](docs/research/ai-command-execution-study.md) 和 [ADR-002](docs/decisions/002-ai-execution-gateway.md)。
 
