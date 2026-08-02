@@ -15,7 +15,13 @@ FiberTerm 应收敛为“成熟 Electerm + FiberHome 品牌 + 企业知识 RAG�
 - **Agent** 才进入 `runAgentLoop`，可调用包括 `send_terminal_command` 在内的工具。
 - **RAG Module 只检索知识，绝不执行命令。** RAG 增强依据，不改变 Ask/Agent 权限，也不能绕过执行审批。
 
-首版推荐：PDF.js + Mammoth + MD/TXT 解析；标题/命令块感知切片；MiniSearch 纯 JavaScript 词法索引；可选 OpenAI-compatible/Ollama embedding；小语料用 JS 精确余弦搜索。所有具体引擎封装在 Adapter 后。这样能最快在 Electron 41/Windows 展示效果，避免新增原生 ABI 风险。
+首个真实语料已经确定为结构化的 `SPN命令行.xlsx`，因此首版优先实现 XLSX Adapter；PDF.js、Mammoth 和 MD/TXT Adapter 延后按需加入。检索仍推荐 MiniSearch 纯 JavaScript 词法索引、可选 OpenAI-compatible/Ollama embedding、小语料 JS 精确余弦搜索。所有具体引擎封装在 Adapter 后，以降低 Electron 41/Windows 打包风险。
+
+### 1.1 已确认的首批语料
+
+`D:\桌面\smartterm\SPNdocs\SPN命令行.xlsx` 位于 Git 仓库之外，不得复制或提交到 GitHub。只读盘点确认其包含 1 个工作表、204 行，主要列为命令、命令视图、说明、使用范围、实例和专家解读；内容覆盖 SPN650/SPN690E 的协议栈查询、diagnose、操作命令、单盘 OS、单盘诊断以及机电命令。
+
+这类表格不应先转成大段文本再固定长度切片。区段标题成为 `section` 元数据；普通行按一行一个知识单元；同一单元格内存在关联命令时作为一个命令组保留。空的实例/专家解读列允许保留，后续可作为人工增强字段。
 
 关键核实：截至研究日，DeepSeek 官方公开 API Reference、Chat Completions 和模型页没有 embeddings 端点或 embedding 模型。因此不能把现有 DeepSeek Key 当向量化能力；生成模型与 Embedding Provider 必须独立配置。没有 embedding 时自动退化为本地词法检索。
 
@@ -63,7 +69,8 @@ Agent Tool ┘       │         Chunker / Metadata Store
 
 | 格式 | MVP 方案 | 保留内容 | 限制 |
 | --- | --- | --- | --- |
-| PDF | `pdfjs-dist`，逐页 `getTextContent()` | 页码、文本项 | 多栏/表格顺序可能错误；无 OCR |
+| XLSX | 经许可证与维护状态核验的纯 JavaScript 解析库 | 工作表、区段、行号、列语义 | 合并单元格、空行和区段标题需专项 fixture；**首版优先** |
+| PDF | `pdfjs-dist`，逐页 `getTextContent()` | 页码、文本项 | 多栏/表格顺序可能错误；无 OCR；后续 |
 | DOCX | `mammoth` 转语义 HTML，再提取受控结构 | 标题、列表、表格、段落 | 复杂排版有损；输出未净化 |
 | Markdown | 轻量 AST/既有生态解析 | 标题路径、代码块、列表 | 嵌入 HTML 必须禁用/净化 |
 | TXT | Node 读取与编码检查 | 段落、行 | 无天然章节结构 |
@@ -266,7 +273,8 @@ OWASP 明确指出 RAG 不能完全消除 prompt injection，外部文件的间�
 
 ### R0：技术 Spike
 
-- 用脱敏样本文档验证 PDF.js/Mammoth 结构；
+- 只读解析 `SPN命令行.xlsx`，固定区段标题、普通命令行、单元格多命令和空列 fixture；
+- 比较并确定适合 Electron 打包的纯 JavaScript XLSX 解析依赖，核验许可证、维护状态和锁定版本；不得依赖 Codex 内置表格工具作为产品运行时；
 - 在 Electron 41 开发版与安装包探测 `node:sqlite`、`PRAGMA compile_options`、FTS5；
 - MiniSearch 自定义 tokenizer 跑 20–30 个黄金问题；
 - 固定知识目录、schema、Module Interface 和 fixture；
@@ -275,7 +283,7 @@ OWASP 明确指出 RAG 不能完全消除 prompt injection，外部文件的间�
 ### R1：本地知识库 + Ask 引用（首个可见版本）
 
 - 导入、列表、状态、删除、重建 UI；
-- 四格式解析，扫描 PDF 警告；
+- 首先完成 XLSX 结构化解析；PDF/DOCX/MD/TXT 不作为本次验收阻塞项；
 - 切片、元数据、MiniSearch；
 - Ask 自动检索并在 AI 窗口显示引用/命令；
 - 仍只允许用户主动复制/点击运行。
@@ -300,7 +308,7 @@ SQLite FTS5/sqlite-vec 或服务端 Adapter、OCR、表格专项、reranker、�
 
 ## 12. 下一开发会话建议边界
 
-不要一次实现 R1–R3。首个分支只交付 R0 + R1 的最小纵切：固定少量真实脱敏资料与黄金问题；建立 RAG Module；先完成 MD/TXT 与 PDF，随后小提交补 DOCX；完成 MiniSearch 与引用；接入 Ask；单测、构建和 Windows 烟测。用户看到效果并验收后，再决定 embedding 与 Agent。
+不要一次实现 R1–R3。首个分支只交付 R0 + R1 的最小纵切：使用仓库外的 `SPN命令行.xlsx` 建立黄金问题；建立 RAG Module；完成 XLSX Adapter、MiniSearch 与引用；接入 Ask；执行单测、构建和 Windows 烟测。用户看到效果并验收后，再决定其他文档格式、embedding 与 Agent。
 
 ## 13. 已知限制
 
