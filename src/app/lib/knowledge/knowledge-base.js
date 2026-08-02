@@ -8,6 +8,7 @@ const SCHEMA_VERSION = 1
 const TOKENIZER_VERSION = 'zh-cli-ngrams-v1'
 const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024
 const SENSITIVE_PATTERN = /(?:password|passwd|private\s*key|\btoken\b|用户名|密码|密钥|口令)/i
+const GENERIC_QUERY_TOKENS = new Set(['查看', '设备', '状态', '信息', '命令', '查询'])
 
 function tokenize (input) {
   const value = String(input || '').toLowerCase()
@@ -27,7 +28,8 @@ function tokenize (input) {
       }
     }
   }
-  return [...tokens]
+  const specificTokens = [...tokens].filter(token => !GENERIC_QUERY_TOKENS.has(token))
+  return specificTokens.length ? specificTokens : [...tokens]
 }
 
 function isCliToken (token) {
