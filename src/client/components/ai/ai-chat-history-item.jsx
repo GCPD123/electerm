@@ -15,6 +15,7 @@ import {
   CaretRightOutlined
 } from '@ant-design/icons'
 import { copy } from '../../common/clipboard'
+import { selectReliableEvidence } from './knowledge-routing'
 
 export default function AIChatHistoryItem ({ item }) {
   const [showOutput, setShowOutput] = useState(true)
@@ -135,7 +136,8 @@ export default function AIChatHistoryItem ({ item }) {
     try {
       let knowledgeEvidence = []
       try {
-        knowledgeEvidence = await window.pre.runGlobalAsync('searchKnowledge', prompt)
+        const candidates = await window.pre.runGlobalAsync('searchKnowledge', prompt)
+        knowledgeEvidence = selectReliableEvidence(candidates)
       } catch (error) {
         console.warn('Knowledge search failed:', error)
       }
