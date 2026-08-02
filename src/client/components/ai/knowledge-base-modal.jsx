@@ -29,7 +29,7 @@ export default function KnowledgeBaseModal ({ open, onClose }) {
   }, [open])
 
   async function importWorkbook () {
-    const paths = await window.pre.openDialog({
+    const paths = await window.api.openDialog({
       properties: ['openFile'],
       filters: [{ name: 'SPN command workbook', extensions: ['xlsx'] }]
     })
