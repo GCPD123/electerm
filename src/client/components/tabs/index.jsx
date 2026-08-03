@@ -21,7 +21,8 @@ import {
   tabMargin,
   extraTabWidth,
   windowControlWidth,
-  isMacJs
+  isMacJs,
+  packInfo
 } from '../../common/constants'
 import WindowControl from './window-control'
 import AddBtn from './add-btn'
@@ -261,7 +262,7 @@ export default class Tabs extends Component {
   }
 
   renderContentInner () {
-    const { tabs = [], width, config } = this.props
+    const { tabs = [], width, config, batch } = this.props
     const len = tabs.length
     const tabsWidthAll = tabMargin * len + 10 + this.tabsWidth()
     const { overflow } = this.state
@@ -271,52 +272,73 @@ export default class Tabs extends Component {
     const w1 = isMacJs && (config.useSystemTitleBar || window.et.isWebApp)
       ? 30
       : this.getExtraTabWidth()
+    // The tab bar is rendered once per pane in a split layout. Keep the
+    // product signature on the primary pane so it stays visible without
+    // stealing space from every additional pane.
+    const showTitleBrand = batch === 0
+    const brandWidth = showTitleBrand ? 176 : 0
     const style = {
-      width: width - w1 - 166
+      width: width - w1 - 166 - brandWidth,
+      marginLeft: brandWidth
     }
     return (
-      <div
-        className='tabs-inner'
-        ref={this.domRef}
-        style={style}
-      >
-        <div
-          style={{
-            left
-          }}
-        />
-        <div
-          className='tabs-wrapper relative'
-          style={{
-            width: tabsWidthAll + extraTabWidth + 10
-          }}
-          onDoubleClick={this.handleAdd}
-        >
-          {
-            tabs.map((tab, i) => {
-              const isLast = i === len - 1
-              const tabProps = {
-                ...this.props,
-                tab,
-                isLast,
-                addTab: this.handleTabAdd,
-                tabIndex: i
-              }
-              return (
-                <Tab
-                  {...tabProps}
-                  key={tab.id}
-                />
+      <>
+        {
+          showTitleBrand
+            ? (
+              <div className='fiberterm-title-brand' title={`${packInfo.displayName || packInfo.name} by ${packInfo.companyName || 'FiberHome'}`}>
+                <span className='fiberterm-title-mark'>FT</span>
+                <span className='fiberterm-title-copy'>
+                  <span className='fiberterm-title-name'>{packInfo.displayName || packInfo.name}</span>
+                  <span className='fiberterm-title-company'>by {packInfo.companyName || 'FiberHome'}</span>
+                </span>
+              </div>
               )
-            })
-          }
-          {
-            overflow
-              ? null
-              : this.renderAddBtn()
-          }
+            : null
+        }
+        <div
+          className='tabs-inner'
+          ref={this.domRef}
+          style={style}
+        >
+          <div
+            style={{
+              left
+            }}
+          />
+          <div
+            className='tabs-wrapper relative'
+            style={{
+              width: tabsWidthAll + extraTabWidth + 10
+            }}
+            onDoubleClick={this.handleAdd}
+          >
+            {
+              tabs.map((tab, i) => {
+                const isLast = i === len - 1
+                const tabProps = {
+                  ...this.props,
+                  tab,
+                  isLast,
+                  addTab: this.handleTabAdd,
+                  tabIndex: i
+                }
+                return (
+                  <Tab
+                    {...tabProps}
+                    key={tab.id}
+                  />
+                )
+              })
+            }
+            {
+              overflow
+                ? null
+                : this.renderAddBtn()
+            }
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 

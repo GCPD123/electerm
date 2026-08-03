@@ -1,5 +1,8 @@
 {
   "name": "electerm",
+  "displayName": "FiberTerm",
+  "companyName": "FiberHome",
+  "productTagline": "企业智能运维终端",
   "version": "3.15.186",
   "description": "Terminal/ssh/telnet/serialport/sftp client(linux, mac, win)",
   "main": "app.js",

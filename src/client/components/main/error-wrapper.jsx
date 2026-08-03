@@ -2,12 +2,11 @@ import React from 'react'
 import { FrownOutlined, ReloadOutlined, CopyOutlined } from '@ant-design/icons'
 import { Button } from 'antd'
 import {
-  logoPath1,
   packInfo,
   isMac,
   isWin
 } from '../../common/constants'
-import Link from '../common/external-link'
+import LogoElem from '../common/logo-elem'
 import { copy } from '../../common/clipboard'
 import compare from '../../common/version-compare'
 
@@ -83,7 +82,7 @@ export default class ErrorBoundary extends React.PureComponent {
     return (
       <div className='pd1y wordbreak'>
         <h2>{e('troubleShoot')}</h2>
-        <p>Electerm Version: {packInfo.version}, OS: {os}</p>
+        <p>{packInfo.displayName || packInfo.name} Version: {packInfo.version}, OS: {os}</p>
         {
           Object.keys(troubleshootContent).map((k, i) => {
             const v = troubleshootContent[k]
@@ -102,29 +101,13 @@ export default class ErrorBoundary extends React.PureComponent {
   }
 
   renderContacts () {
-    const {
-      bugs: {
-        url: bugReportLink
-      }
-    } = packInfo
-    const bugUrl = `${bugReportLink}/new/choose`
+    const displayName = packInfo.displayName || packInfo.name
+    const companyName = packInfo.companyName || 'FiberHome'
     return (
-      <>
-        <div className='pd1b'>
-          <Link to={bugUrl}>{e('bugReport')}</Link>
-        </div>
-        <div className='pd1b'>
-          <span>Contact author: </span>
-          <Link to='mailto:zxdong@gmail.com'>zxdong@gmail.com</Link>
-        </div>
-        <div className='pd3y'>
-          <img
-            src='https://electerm.org/electerm-wechat-group-qr.jpg'
-            className='mwm-100'
-            width={200}
-          />
-        </div>
-      </>
+      <div className='pd2y'>
+        <p><b>{displayName}</b> by {companyName}</p>
+        <p>For assistance, contact your organization&apos;s {displayName} administrator.</p>
+      </div>
     )
   }
 
@@ -134,7 +117,7 @@ export default class ErrorBoundary extends React.PureComponent {
       return (
         <div className='pd3 error-wrapper'>
           <div className='pd2y'>
-            <img src={logoPath1} className='iblock mwm-100' width={100} />
+            <LogoElem />
           </div>
           <h1>
             <FrownOutlined className='mg1r iblock' />

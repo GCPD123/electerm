@@ -6,7 +6,8 @@
 |---|---|---|
 | `codex/smartterm-base` | 官方可复现基线 | `e5bf0f9a` / Electerm `v3.15.186` |
 | `codex/smartterm-main` | FiberTerm 产品集成主线 | `b4b64f76`，已包含项目文档、AI 执行与分级授权研究 |
-| `codex/branding-name` | FiberTerm/FiberHome 展示层品牌 | 已实现并测试，按用户要求暂不合并；正式 Logo 待补 |
+| `codex/branding-name` | FiberTerm/FiberHome 展示层品牌 | 品牌来源分支；已由 MVP 集成分支受控合入，正式 Logo 待补 |
+| `codex/fiberterm-mvp-integration` | FiberTerm 可运行 MVP 集成 | 在已验收的 RAG MVP 上整合品牌展示；待用户界面验收后再合并至产品主线 |
 | `codex/ai-execution-research` | AI 执行现状与改造研究 | 报告完成，不含产品代码 |
 | `codex/project-memory-foundation` | 项目文档和会话工作流 | 已合并到产品主线 |
 | `codex/ai-approval-modes-research` | Ask/Agent 分级授权研究 | 当前文档修订分支 |

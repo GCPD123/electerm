@@ -26,7 +26,7 @@ const defaultAIPreset = {
 const base = {
   version: pack.version,
   isDev: !isProd,
-  siteName: pack.name,
+  siteName: pack.displayName || pack.name,
   defaultAIPreset
 }
 

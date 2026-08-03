@@ -123,6 +123,9 @@ export default auto(function InfoModal (props) {
   }
   const {
     name,
+    displayName = name,
+    companyName = 'FiberHome',
+    productTagline = '',
     // description,
     devDependencies,
     dependencies,
@@ -153,7 +156,7 @@ export default auto(function InfoModal (props) {
   }
   const title = (
     <div className='custom-modal-close-confirm-title font16'>
-      <InfoCircleOutlined className='font20 mg1r' /> {e('about')} {name}
+      <InfoCircleOutlined className='font20 mg1r' /> {e('about')} {displayName}
     </div>
   )
   const attrs = {
@@ -171,8 +174,10 @@ export default auto(function InfoModal (props) {
       children: (
         <>
           <LogoElem />
+          <p className='mg1b'><b>{displayName}</b> by {companyName}{productTagline ? ` · ${productTagline}` : ''}</p>
           <p className='mg2b'>{e('desc')}</p>
           <RunningTime />
+          <p className='mg1b'><b>Open-source upstream</b></p>
           <p className='mg1b'>
             <HomeOutlined /> <b>{e('homepage')}/{e('download')} ➾</b>
             <Link to={homepage} className='mg1l'>

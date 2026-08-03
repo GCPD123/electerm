@@ -8,10 +8,12 @@ export default function AppDrag (props) {
       target
     } = e
     const { classList = [] } = target || {}
+    const inTitleBrand = target?.closest?.('.fiberterm-title-brand')
     if (
       !classList.contains('app-drag') &&
       !classList.contains('tabs-inner') &&
-      !classList.contains('tabs-wrapper')
+      !classList.contains('tabs-wrapper') &&
+      !inTitleBrand
     ) {
       window.pre.runSync('windowMove', false)
       return false

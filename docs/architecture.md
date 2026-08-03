@@ -55,7 +55,7 @@ Ask 在调用聊天模型前检索并构造带引用的上下文，但只输出�
 
 - 基线：Electerm `v3.15.186`，提交 `e5bf0f9a`。
 - 产品集成主线：`codex/smartterm-main`，当前仍等同于基线。
-- 品牌实现位于 `codex/branding-name`，尚未合并，等待后续视觉补充和用户验收。
+- 品牌来源分支为 `codex/branding-name`；当前由 `codex/fiberterm-mvp-integration` 在已验收的 RAG MVP 上受控整合，待用户界面验收后再合并至产品主线。正式公司 Logo 待补。
 - AI 执行研究已经完成；执行网关尚未实现。
 
 更细的 AI 调用链和风险证据见 [AI 命令执行研究](research/ai-command-execution-study.md)。
