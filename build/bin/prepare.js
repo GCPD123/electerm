@@ -21,6 +21,7 @@ delete pack.standard
 delete pack.files
 delete pack.engines
 delete pack.preferGlobal
+delete pack.devDependencies
 
 if (isWin) {
   delete pack.dependencies['node-bash']

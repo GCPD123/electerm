@@ -19,6 +19,7 @@ describe('Windows local installer', () => {
     assert.equal(prepareSource.includes("resolve(cwd, '.cache', 'npm-packaging')"), true)
     assert.equal(prepareSource.includes("process.env.FIBERTERM_PACKAGE_REGISTRY || 'https://registry.npmmirror.com'"), true)
     assert.equal(prepareSource.includes('--prefer-offline'), true)
+    assert.equal(prepareSource.includes('delete pack.devDependencies'), true)
     assert.equal(prepareSource.includes("throw new Error('Production dependency install failed')"), true)
   })
 })
