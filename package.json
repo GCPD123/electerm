@@ -28,6 +28,7 @@
     "r": "./build/bin/release",
     "w": "./build/bin/web-release",
     "t": "node build/bin/app",
+    "package:win-local": "npm run b && node build/bin/build-win-nsis-local.js",
     "lock": "npm i --package-lock-only"
   },
   "license": "MIT",

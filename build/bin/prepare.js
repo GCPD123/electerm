@@ -9,6 +9,7 @@ const { version } = pack
 const { mkdir, rm, exec, echo, cp } = require('shelljs')
 const dir = 'dist/v' + version
 const cwd = process.cwd()
+const packageCache = resolve(cwd, '.cache', 'npm-packaging')
 
 const platform = os.platform()
 const isWin = platform === 'win32'
@@ -50,7 +51,11 @@ require('fs').writeFileSync(
   )
 )
 
-exec(`cd work/app && npm i --omit=dev && cd ${cwd}`)
+mkdir('-p', packageCache)
+const dependencyInstall = exec(`cd work/app && npm i --omit=dev --cache "${packageCache}" --no-audit --no-fund && cd "${cwd}"`)
+if (dependencyInstall.code !== 0) {
+  throw new Error('Production dependency install failed')
+}
 rm('-rf', 'work/app/node_modules/.bin')
 // Remove axios browser/ESM builds and unnecessary files (keep only lib/ and node CJS)
 rm('-rf', 'work/app/node_modules/axios/dist/esm')
@@ -101,7 +106,15 @@ rm('-rf', 'work/app/node_modules/node-pty/lib/testUtils.test.js.map')
 
 // yarn auto clean
 cp('-r', 'build/bin/.yarnclean', 'work/app/')
-exec(`cd work/app && yarn generate-lock-entry > yarn.lock && yarn autoclean --force && cd ${cwd}`)
+const yarnCheck = exec('yarn --version', { silent: true })
+if (yarnCheck.code === 0) {
+  const yarnClean = exec(`cd work/app && yarn generate-lock-entry > yarn.lock && yarn autoclean --force && cd "${cwd}"`)
+  if (yarnClean.code !== 0) {
+    throw new Error('Yarn cleanup failed')
+  }
+} else {
+  echo('yarn is unavailable; skipping optional autoclean')
+}
 rm('-rf', 'work/app/.yarnclean')
 rm('-rf', 'work/app/package-lock.json')
 rm('-rf', 'work/app/yarn.lock')
