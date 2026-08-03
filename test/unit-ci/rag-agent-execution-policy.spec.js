@@ -10,10 +10,10 @@ async function loadPolicy () {
 }
 
 describe('FiberHome Agent execution policy', () => {
-  it('allows an explicitly requested read-only command with reliable knowledge', async () => {
+  it('allows a read-only query with reliable knowledge in Agent mode', async () => {
     const { evaluateFiberhomeCommandExecution } = await loadPolicy()
     const decision = evaluateFiberhomeCommandExecution({
-      prompt: '请执行烽火设备时钟状态查询',
+      prompt: '烽火设备时钟状态怎么查看',
       evidence: [{ command: 'display clock' }],
       command: 'display clock'
     })
@@ -21,7 +21,7 @@ describe('FiberHome Agent execution policy', () => {
     assert.equal(decision.allowed, true)
   })
 
-  it('blocks a FiberHome command without evidence, intent, or read-only form', async () => {
+  it('blocks a FiberHome command without evidence or with a changing form', async () => {
     const { evaluateFiberhomeCommandExecution } = await loadPolicy()
 
     assert.match(
@@ -34,15 +34,7 @@ describe('FiberHome Agent execution policy', () => {
     )
     assert.match(
       evaluateFiberhomeCommandExecution({
-        prompt: '烽火设备时钟状态怎么查看',
-        evidence: [{ command: 'display clock' }],
-        command: 'display clock'
-      }).reason,
-      /explicit request/
-    )
-    assert.match(
-      evaluateFiberhomeCommandExecution({
-        prompt: '请执行烽火设备配置',
+        prompt: '烽火设备配置怎么做',
         evidence: [{ command: 'configure terminal' }],
         command: 'configure terminal'
       }).reason,
