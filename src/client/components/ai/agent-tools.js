@@ -1,6 +1,7 @@
 import { z } from '../../common/zod'
 import { bookmarkSchemas } from '../../common/bookmark-schemas'
 import { selectReliableEvidence } from './knowledge-routing'
+import { evaluateFiberhomeCommandExecution } from './agent-execution-policy'
 
 function buildAddBookmarkParameters () {
   const typeProperties = {}
@@ -467,7 +468,7 @@ export const agentTools = [
   }
 ]
 
-export async function executeToolCall (toolName, args) {
+export async function executeToolCall (toolName, args, executionContext = {}) {
   const store = window.store
   switch (toolName) {
     case 'search_fiberhome_knowledge': {
@@ -477,6 +478,13 @@ export async function executeToolCall (toolName, args) {
       return JSON.stringify(selectReliableEvidence(evidence))
     }
     case 'send_terminal_command': {
+      const executionDecision = evaluateFiberhomeCommandExecution({
+        ...executionContext,
+        command: args.command
+      })
+      if (!executionDecision.allowed) {
+        throw new Error(executionDecision.reason)
+      }
       store.mcpSendTerminalCommand(args)
       const idleResult = await store.mcpWaitForTerminalIdle({
         tabId: args.tabId || store.activeTabId,
