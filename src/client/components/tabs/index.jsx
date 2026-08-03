@@ -29,6 +29,7 @@ import AddBtn from './add-btn'
 import AppDrag from './app-drag'
 import NoSession from './no-session'
 import classNames from 'classnames'
+import fiberHomeLogo from '../common/assets/fiberhome-logo.png'
 
 export default class Tabs extends Component {
   constructor (props) {
@@ -287,11 +288,12 @@ export default class Tabs extends Component {
           showTitleBrand
             ? (
               <div className='fiberterm-title-brand' title={`${packInfo.displayName || packInfo.name} by ${packInfo.companyName || 'FiberHome'}`}>
-                <span className='fiberterm-title-mark'>FT</span>
-                <span className='fiberterm-title-copy'>
-                  <span className='fiberterm-title-name'>{packInfo.displayName || packInfo.name}</span>
-                  <span className='fiberterm-title-company'>by {packInfo.companyName || 'FiberHome'}</span>
-                </span>
+                <img
+                  className='fiberhome-title-logo'
+                  src={fiberHomeLogo}
+                  alt={packInfo.companyName || 'FiberHome'}
+                />
+                <span className='fiberterm-title-name'>{packInfo.displayName || packInfo.name}</span>
               </div>
               )
             : null

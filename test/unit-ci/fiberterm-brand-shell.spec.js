@@ -13,9 +13,18 @@ describe('FiberTerm brand shell', () => {
   it('keeps one title-bar signature in the primary split pane', () => {
     const source = readSource('src', 'client', 'components', 'tabs', 'index.jsx')
 
+    assert.match(source, /import fiberHomeLogo from '\.\.\/common\/assets\/fiberhome-logo\.png'/)
     assert.match(source, /const showTitleBrand = batch === 0/)
     assert.match(source, /const brandWidth = showTitleBrand \? 176 : 0/)
     assert.match(source, /showTitleBrand\s*\? \(/)
+    assert.match(source, /className='fiberhome-title-logo'/)
+  })
+
+  it('uses the extracted official FiberHome logo in product identity surfaces', () => {
+    const source = readSource('src', 'client', 'components', 'common', 'logo-elem.jsx')
+
+    assert.match(source, /import fiberHomeLogo from '\.\/assets\/fiberhome-logo\.png'/)
+    assert.match(source, /className='fiberhome-official-logo'/)
   })
 
   it('keeps the product signature draggable when native drag events are used', () => {
