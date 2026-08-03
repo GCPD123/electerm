@@ -34,6 +34,7 @@
 - 增加只读 `search_fiberhome_knowledge` 工具。
 - FiberHome 设备操作先检索证据，再生成命令。
 - 展示来源、型号/版本适用性和无可靠依据时的拒答。
+- 真机首轮验证后，先完成 CLI 会话上下文、命令视图约束、分页识别和 Agent 固定目标加固；实施范围与验收见 [真机验证与 RAG 优化整改方案](research/real-device-rag-hardening-plan.md)。
 
 ### 阶段 D：最低必要的执行控制
 

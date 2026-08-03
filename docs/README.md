@@ -12,6 +12,7 @@
 | [ADR-002：AI 统一执行网关](decisions/002-ai-execution-gateway.md) | 开发 AI 命令执行、审批、安全或审计功能 |
 | [ADR-003：RAG-first 产品范围](decisions/003-rag-first-product-scope.md) | 判断当前产品重点、RAG 与执行能力的边界 |
 | [RAG 模块 MVP](features/rag-module-mvp.md) | 新会话设计或实施知识库、检索、引用及 Ask/Agent 接入 |
+| [真机验证与 RAG 优化整改方案](research/real-device-rag-hardening-plan.md) | 根据真机日志实施 CLI 上下文、模式约束、分页识别和 Agent 目标固定 |
 | [AI 命令执行研究](research/ai-command-execution-study.md) | 需要源码级调用链和风险证据时 |
 | [AI 授权模式研究](research/ai-approval-modes-study.md) | 设计 Ask/Agent 边界、三档授权、作用域和撤销时 |
 | [RAG 模块技术研究](research/rag-module-study.md) | 需要 RAG 接入点、解析/检索选型、安全和测试依据时 |
