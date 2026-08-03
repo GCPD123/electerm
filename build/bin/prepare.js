@@ -10,6 +10,7 @@ const { mkdir, rm, exec, echo, cp } = require('shelljs')
 const dir = 'dist/v' + version
 const cwd = process.cwd()
 const packageCache = resolve(cwd, '.cache', 'npm-packaging')
+const packageRegistry = process.env.FIBERTERM_PACKAGE_REGISTRY || 'https://registry.npmmirror.com'
 
 const platform = os.platform()
 const isWin = platform === 'win32'
@@ -52,7 +53,7 @@ require('fs').writeFileSync(
 )
 
 mkdir('-p', packageCache)
-const dependencyInstall = exec(`cd work/app && npm i --omit=dev --cache "${packageCache}" --no-audit --no-fund && cd "${cwd}"`)
+const dependencyInstall = exec(`cd work/app && npm i --omit=dev --cache "${packageCache}" --registry="${packageRegistry}" --prefer-offline --no-audit --no-fund && cd "${cwd}"`)
 if (dependencyInstall.code !== 0) {
   throw new Error('Production dependency install failed')
 }

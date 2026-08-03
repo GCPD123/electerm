@@ -17,6 +17,8 @@ describe('Windows local installer', () => {
     const preparePath = path.resolve(__dirname, '../../build/bin/prepare.js')
     const prepareSource = await fs.readFile(preparePath, 'utf8')
     assert.equal(prepareSource.includes("resolve(cwd, '.cache', 'npm-packaging')"), true)
+    assert.equal(prepareSource.includes("process.env.FIBERTERM_PACKAGE_REGISTRY || 'https://registry.npmmirror.com'"), true)
+    assert.equal(prepareSource.includes('--prefer-offline'), true)
     assert.equal(prepareSource.includes("throw new Error('Production dependency install failed')"), true)
   })
 })
