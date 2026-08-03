@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons'
 
 const toolIcons = {
+  search_fiberhome_knowledge: DatabaseOutlined,
   send_terminal_command: CodeOutlined,
   get_terminal_output: CodeOutlined,
   open_local_terminal: CodeOutlined,

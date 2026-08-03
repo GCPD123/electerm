@@ -1,5 +1,6 @@
 import { z } from '../../common/zod'
 import { bookmarkSchemas } from '../../common/bookmark-schemas'
+import { selectReliableEvidence } from './knowledge-routing'
 
 function buildAddBookmarkParameters () {
   const typeProperties = {}
@@ -27,6 +28,27 @@ function buildAddBookmarkParameters () {
 }
 
 export const agentTools = [
+  {
+    type: 'function',
+    function: {
+      name: 'search_fiberhome_knowledge',
+      description: 'Search the locally imported FiberHome command knowledge base. This is read-only: use it before proposing or running FiberHome or SPN device commands, and cite the returned source information.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'The FiberHome or SPN question to search for.'
+          },
+          deviceModel: {
+            type: 'string',
+            description: 'Optional device model used to narrow matching knowledge.'
+          }
+        },
+        required: ['query']
+      }
+    }
+  },
   {
     type: 'function',
     function: {
@@ -448,6 +470,12 @@ export const agentTools = [
 export async function executeToolCall (toolName, args) {
   const store = window.store
   switch (toolName) {
+    case 'search_fiberhome_knowledge': {
+      const evidence = await window.pre.runGlobalAsync('searchKnowledge', args.query, {
+        deviceModel: args.deviceModel
+      })
+      return JSON.stringify(selectReliableEvidence(evidence))
+    }
     case 'send_terminal_command': {
       store.mcpSendTerminalCommand(args)
       const idleResult = await store.mcpWaitForTerminalIdle({
