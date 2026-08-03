@@ -53,4 +53,14 @@ describe('FiberHome Agent execution policy', () => {
 
     assert.equal(terminalTool.indexOf('evaluateFiberhomeCommandExecution') < terminalTool.indexOf('mcpSendTerminalCommand'), true)
   })
+
+  it('makes the Agent execution policy visible in the chat UI', async () => {
+    const source = await fs.readFile(
+      path.resolve(__dirname, '../../src/client/components/ai/ai-chat.jsx'),
+      'utf8'
+    )
+
+    assert.match(source, /Read-only FiberHome checks run automatically/)
+    assert.match(source, /Changes require review/)
+  })
 })

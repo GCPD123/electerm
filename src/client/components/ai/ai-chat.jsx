@@ -12,7 +12,8 @@ import {
   PlusOutlined,
   HistoryOutlined,
   CompressOutlined,
-  DatabaseOutlined
+  DatabaseOutlined,
+  InfoCircleOutlined
 } from '@ant-design/icons'
 import {
   aiConfigWikiLink,
@@ -243,6 +244,12 @@ export default function AIChat (props) {
           autoSize={{ minRows: 3, maxRows: 10 }}
           className='ai-chat-textarea'
         />
+        {isAgent && (
+          <div className='agent-execution-policy-hint'>
+            <InfoCircleOutlined />
+            <span>Read-only FiberHome checks run automatically when a device is connected. Changes require review.</span>
+          </div>
+        )}
         <Flex className='ai-chat-terminals' justify='space-between' align='center'>
           <Flex align='center'>
             <Segmented
