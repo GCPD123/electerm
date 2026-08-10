@@ -3,5 +3,12 @@ export function selectReliableEvidence (evidence) {
   const scores = evidence.map(item => Number(item.score) || 0)
   const bestScore = Math.max(...scores)
   const threshold = Math.max(4, bestScore * 0.8)
-  return evidence.filter(item => (Number(item.score) || 0) >= threshold).slice(0, 4)
+  const reliable = evidence.filter(item => (Number(item.score) || 0) >= threshold)
+  const workflows = reliable.filter(item => item.knowledgeType === 'troubleshooting')
+  if (!workflows.length) return reliable.slice(0, 4)
+
+  return workflows
+    .sort((left, right) => Number(left.workflowStep) - Number(right.workflowStep) ||
+      Number(left.source?.row) - Number(right.source?.row))
+    .slice(0, 8)
 }

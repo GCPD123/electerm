@@ -17,6 +17,7 @@ import {
   validateBookmarkData
 } from '../components/bookmark-form/fix-bookmark-default'
 import newTerm from '../common/new-terminal'
+import { buildTerminalContextSnapshot } from '../common/fiberhome-terminal-context'
 
 export default Store => {
   // Initialize MCP handler - called when MCP widget is started
@@ -606,6 +607,39 @@ export default Store => {
     }
   }
 
+  Store.prototype.mcpCaptureTerminalContext = function (args = {}) {
+    const { store } = window
+    const tabId = args.tabId || store.activeTabId || null
+    const tab = tabId ? store.tabs.find(item => item.id === tabId) : null
+    let output = ''
+
+    if (tabId) {
+      try {
+        output = store.mcpGetTerminalOutput({ tabId, lines: 100 }).output
+      } catch (error) {
+        output = ''
+      }
+    }
+
+    const terminalOnData = tabId
+      ? refsTabs.get('tab-' + tabId)?.state.terminalOnData
+      : ''
+    return buildTerminalContextSnapshot({
+      tabId,
+      terminalInstanceId: tabId,
+      transport: tab?.type === 'ssh' || tab?.type === 'telnet'
+        ? tab.type
+        : 'unknown',
+      output,
+      interactionState: terminalOnData === 'password'
+        ? 'password'
+        : terminalOnData === 'feed'
+          ? 'running'
+          : undefined,
+      capturedAt: Date.now()
+    })
+  }
+
   Store.prototype.mcpWaitForTerminalIdle = async function (args) {
     const { store } = window
     const tabId = args.tabId || store.activeTabId
@@ -650,12 +684,29 @@ export default Store => {
       const onData = tabRef?.state.terminalOnData
       if (!onData) {
         const { output, lineCount } = collectOutput()
+        const terminalContext = store.mcpCaptureTerminalContext({ tabId })
+        if (terminalContext.interactionState === 'paged' || terminalContext.interactionState === 'password') {
+          return {
+            tabId,
+            elapsed: Date.now() - start,
+            timedOut: false,
+            completed: false,
+            message: terminalContext.interactionState === 'paged'
+              ? 'Terminal is waiting at a pager prompt; output is incomplete and was not advanced automatically.'
+              : 'Terminal is waiting for a password; output is incomplete.',
+            output,
+            lineCount,
+            terminalContext
+          }
+        }
         return {
           tabId,
           elapsed: Date.now() - start,
           timedOut: false,
+          completed: true,
           output,
-          lineCount
+          lineCount,
+          terminalContext
         }
       }
       await new Promise(resolve => setTimeout(resolve, pollInterval))
@@ -667,9 +718,11 @@ export default Store => {
       tabId,
       elapsed: Date.now() - start,
       timedOut: true,
+      completed: false,
       message: `Terminal still active after ${timeout}ms`,
       output,
-      lineCount
+      lineCount,
+      terminalContext: store.mcpCaptureTerminalContext({ tabId })
     }
   }
 
@@ -714,7 +767,8 @@ export default Store => {
       hasPasswordPrompt: onData === 'password',
       isIdle: !onData,
       output,
-      lineCount
+      lineCount,
+      terminalContext: store.mcpCaptureTerminalContext({ tabId })
     }
   }
 

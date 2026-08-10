@@ -17,4 +17,14 @@ describe('Ask RAG boundary', () => {
     assert.match(askRequest, /runGlobalAsync\('searchKnowledge'/)
     assert.doesNotMatch(askRequest, /runCommandInTerminal|executeToolCall|send_terminal_command/)
   })
+
+  it('captures a fixed sanitized terminal context when the request is submitted', async () => {
+    const source = await fs.readFile(path.resolve(
+      __dirname,
+      '../../src/client/components/ai/ai-chat.jsx'
+    ), 'utf8')
+
+    assert.match(source, /mcpCaptureTerminalContext\(\)/)
+    assert.match(source, /terminalContext/)
+  })
 })

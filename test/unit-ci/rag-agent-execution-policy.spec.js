@@ -10,39 +10,27 @@ async function loadPolicy () {
 }
 
 describe('FiberHome Agent execution policy', () => {
-  it('allows a read-only query with reliable knowledge in Agent mode', async () => {
-    const { evaluateFiberhomeCommandExecution } = await loadPolicy()
-    const decision = evaluateFiberhomeCommandExecution({
-      prompt: '烽火设备时钟状态怎么查看',
-      evidence: [{ command: 'display clock' }],
-      command: 'display clock'
-    })
-
-    assert.equal(decision.allowed, true)
-  })
-
-  it('blocks a FiberHome command without evidence or with a changing form', async () => {
-    const { evaluateFiberhomeCommandExecution } = await loadPolicy()
-
-    assert.match(
-      evaluateFiberhomeCommandExecution({
-        prompt: '请执行烽火设备状态查询',
+  it('allows every requested command in the MVP unrestricted mode', async () => {
+    const { AGENT_EXECUTION_POLICY_MODE, evaluateFiberhomeCommandExecution } = await loadPolicy()
+    for (const command of [
+      'show running-config',
+      'configure terminal',
+      'ping vc raw <VCID> remote <对端IP>',
+      'vendor-specific-command'
+    ]) {
+      const decision = evaluateFiberhomeCommandExecution({
+        prompt: 'run this command',
         evidence: [],
-        command: 'display clock'
-      }).reason,
-      /reliable knowledge/
-    )
-    assert.match(
-      evaluateFiberhomeCommandExecution({
-        prompt: '烽火设备配置怎么做',
-        evidence: [{ command: 'configure terminal' }],
-        command: 'configure terminal'
-      }).reason,
-      /read-only/
-    )
+        command,
+        executionTarget: null,
+        terminalContext: { cliMode: 'unknown' }
+      })
+      assert.equal(decision.allowed, true)
+      assert.equal(decision.mode, AGENT_EXECUTION_POLICY_MODE)
+    }
   })
 
-  it('enforces the policy before the terminal write tool runs', async () => {
+  it('keeps the policy seam immediately before the terminal write tool', async () => {
     const source = await fs.readFile(
       path.resolve(__dirname, '../../src/client/components/ai/agent-tools.js'),
       'utf8'
@@ -52,15 +40,26 @@ describe('FiberHome Agent execution policy', () => {
     const terminalTool = source.slice(toolStart, toolEnd)
 
     assert.equal(terminalTool.indexOf('evaluateFiberhomeCommandExecution') < terminalTool.indexOf('mcpSendTerminalCommand'), true)
+    assert.match(terminalTool, /tabId: executionTarget\.tabId/)
   })
 
-  it('makes the Agent execution policy visible in the chat UI', async () => {
+  it('shows the unrestricted Agent mode in the chat UI', async () => {
     const source = await fs.readFile(
       path.resolve(__dirname, '../../src/client/components/ai/ai-chat.jsx'),
       'utf8'
     )
 
-    assert.match(source, /Read-only FiberHome checks run automatically/)
-    assert.match(source, /Changes require review/)
+    assert.match(source, /Agent command execution is unrestricted in this MVP/)
+  })
+
+  it('shows only the sanitized Agent target state in history', async () => {
+    const source = await fs.readFile(
+      path.resolve(__dirname, '../../src/client/components/ai/ai-chat-history-item.jsx'),
+      'utf8'
+    )
+
+    assert.match(source, /Agent target locked/)
+    assert.match(source, /FiberHome user CLI/)
+    assert.doesNotMatch(source, /terminalContext\.tabId/)
   })
 })

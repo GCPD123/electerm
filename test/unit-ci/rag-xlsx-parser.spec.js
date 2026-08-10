@@ -93,6 +93,61 @@ async function createFixture () {
   return fixturePath
 }
 
+async function createTroubleshootingFixture () {
+  const values = [
+    '1',
+    'Check PW reachability. If it fails, continue to step 2.',
+    'ping vc raw 7 remote 10.2.3.4',
+    'vpws vpws_customerA\n interface eth-1gi 0/8/0/6\n peer 10.2.3.4 vcid 7 encapsulation raw static in-label 206150 out-label 206150\n pw-class-template pwclassname-1536058875\n primary-lsp forward-pathid 96 reverse-pathid 18',
+    '2',
+    'Trace the LSP fault point when the PW check fails.',
+    'tracert lsp te tunnel 12 sa 10.2.3.4',
+    '3',
+    'Escalate after the preceding checks cannot locate the fault.'
+  ]
+  const workbook = '<?xml version="1.0"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="VPWS Troubleshooting" sheetId="1" r:id="rId1"/></sheets></workbook>'
+  const relationships = '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>'
+  const worksheet = `<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>
+    <row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c><c r="D1" t="s"><v>3</v></c></row>
+    <row r="2"><c r="A2" t="s"><v>4</v></c><c r="B2" t="s"><v>5</v></c><c r="C2" t="s"><v>6</v></c></row>
+    <row r="3"><c r="A3" t="s"><v>7</v></c><c r="B3" t="s"><v>8</v></c></row>
+  </sheetData></worksheet>`
+  const fixturePath = path.join(await fs.mkdtemp(path.join(os.tmpdir(), 'fiberterm-xlsx-')), 'vpws-troubleshooting-fixture.xlsx')
+  await fs.writeFile(fixturePath, writeStoredZip([
+    { name: 'xl/workbook.xml', content: workbook },
+    { name: 'xl/_rels/workbook.xml.rels', content: relationships },
+    { name: 'xl/sharedStrings.xml', content: sharedStrings(values) },
+    { name: 'xl/worksheets/sheet1.xml', content: worksheet }
+  ]))
+  return fixturePath
+}
+
+async function createReferenceFixture () {
+  const values = [
+    'Step 1: run show run service l2vpn to find the VPWS block',
+    'pw-class-template pwclassname-demo',
+    'Then locate the tunnel-policy for that template',
+    'tunnel-policy pw-tnl-plcy-demo',
+    'The tunnel binding identifies the managed tunnel',
+    'tunnel binding destination 198.51.100.10 te 135'
+  ]
+  const workbook = '<?xml version="1.0"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="VPWS tunnel mapping" sheetId="1" r:id="rId1"/></sheets></workbook>'
+  const relationships = '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>'
+  const worksheet = `<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>
+    <row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row>
+    <row r="2"><c r="A2" t="s"><v>2</v></c><c r="B2" t="s"><v>3</v></c></row>
+    <row r="3"><c r="A3" t="s"><v>4</v></c><c r="B3" t="s"><v>5</v></c></row>
+  </sheetData></worksheet>`
+  const fixturePath = path.join(await fs.mkdtemp(path.join(os.tmpdir(), 'fiberterm-xlsx-')), 'vpws-reference-fixture.xlsx')
+  await fs.writeFile(fixturePath, writeStoredZip([
+    { name: 'xl/workbook.xml', content: workbook },
+    { name: 'xl/_rels/workbook.xml.rels', content: relationships },
+    { name: 'xl/sharedStrings.xml', content: sharedStrings(values) },
+    { name: 'xl/worksheets/sheet1.xml', content: worksheet }
+  ]))
+  return fixturePath
+}
+
 describe('SPN XLSX parser', () => {
   it('keeps sections, command groups, empty columns, CLI punctuation and source rows', async () => {
     const fixturePath = await createFixture()
@@ -120,5 +175,45 @@ describe('SPN XLSX parser', () => {
     assert.equal(result.units[1].source.section, '协议栈(diagnose)诊断模式下')
     assert.equal(result.units[2].command, 'interface eth-10gi 0/22/0/1.100\n no shutdown')
     assert.equal(result.units[2].source.row, 5)
+  })
+
+  it('imports numbered troubleshooting steps with a redacted configuration reference, not executable targets', async () => {
+    const fixturePath = await createTroubleshootingFixture()
+    const result = await parseXlsxCommandWorkbook(fixturePath)
+
+    assert.equal(result.units.length, 3)
+    assert.deepEqual(result.units[0], {
+      kind: 'troubleshooting',
+      workflowStep: '1',
+      command: 'ping vc raw <VCID> remote <对端IP>',
+      commandView: '',
+      description: 'Check PW reachability. If it fails, continue to step 2.',
+      usageScope: 'Troubleshooting workflow',
+      example: '',
+      expertNotes: '',
+      configurationReference: 'vpws <业务名>\ninterface <接入接口>\npeer <对端IP> vcid <VCID> encapsulation raw static in-label <入标签> out-label <出标签>\npw-class-template <PW类模板>\nprimary-lsp forward-pathid <正向路径ID> reverse-pathid <反向路径ID>',
+      requiresParameters: true,
+      source: {
+        worksheet: 'VPWS Troubleshooting',
+        section: 'VPWS Troubleshooting troubleshooting workflow',
+        row: 1
+      }
+    })
+    assert.equal(JSON.stringify(result.units).includes('10.2.3.4'), false)
+    assert.equal(JSON.stringify(result.units).includes('vpws_customerA'), false)
+    assert.equal(JSON.stringify(result.units).includes('206150'), false)
+    assert.equal(JSON.stringify(result.units).includes('forward-pathid 96'), false)
+  })
+
+  it('imports a new reference sheet even when it is not a command or numbered workflow table', async () => {
+    const fixturePath = await createReferenceFixture()
+    const result = await parseXlsxCommandWorkbook(fixturePath)
+
+    assert.equal(result.worksheets[0].name, 'VPWS tunnel mapping')
+    assert.equal(result.units.length, 3)
+    assert.equal(result.units[0].kind, 'reference')
+    assert.equal(result.units[0].command, 'show run service l2vpn')
+    assert.match(result.units[1].referenceText, /tunnel-policy/)
+    assert.match(result.units[2].referenceText, /tunnel binding/)
   })
 })

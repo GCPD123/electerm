@@ -38,7 +38,14 @@ export default function KnowledgeBaseModal ({ open, onClose }) {
     try {
       const result = await window.pre.runGlobalAsync('importKnowledgeDocuments', paths)
       const failed = result.failed.map(item => item.error).join('; ')
-      setMessage(failed || `Imported ${result.imported.length}; skipped duplicates ${result.duplicates.length}`)
+      const importedSummary = result.imported.map(document => {
+        const sheets = (document.worksheets || []).map(sheet => sheet.name).join(', ')
+        return `${document.title}: ${document.unitCount} knowledge units from ${sheets || 'no named sheets'}`
+      }).join('; ')
+      const duplicateSummary = result.duplicates.length
+        ? `Skipped unchanged documents: ${result.duplicates.map(document => document.title).join(', ')}`
+        : ''
+      setMessage(failed || importedSummary || duplicateSummary || 'No documents were imported')
       await refresh()
     } catch (error) {
       setMessage(error.message)

@@ -64,6 +64,9 @@ export default function AIChat (props) {
     if (!prompt.trim()) return
 
     const chatId = uid()
+    const terminalContext = window.store.mcpCaptureTerminalContext
+      ? window.store.mcpCaptureTerminalContext()
+      : null
     const chatEntry = {
       prompt,
       response: '',
@@ -73,6 +76,14 @@ export default function AIChat (props) {
       chatSessionId: currentChatSessionId,
       mode,
       toolCalls: [],
+      terminalContext,
+      agentExecutionTarget: mode === 'agent' && terminalContext?.tabId
+        ? {
+            tabId: terminalContext.tabId,
+            terminalInstanceId: terminalContext.terminalInstanceId,
+            transport: terminalContext.transport
+          }
+        : null,
       ...pick(props.config, [
         'nameAI',
         'modelAI',
@@ -247,7 +258,7 @@ export default function AIChat (props) {
         {isAgent && (
           <div className='agent-execution-policy-hint'>
             <InfoCircleOutlined />
-            <span>Read-only FiberHome checks run automatically when a device is connected. Changes require review.</span>
+            <span>Agent command execution is unrestricted in this MVP. Confirm the active terminal and command impact before asking Agent to run it.</span>
           </div>
         )}
         <Flex className='ai-chat-terminals' justify='space-between' align='center'>

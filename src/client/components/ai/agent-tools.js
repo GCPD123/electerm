@@ -2,6 +2,7 @@ import { z } from '../../common/zod'
 import { bookmarkSchemas } from '../../common/bookmark-schemas'
 import { selectReliableEvidence } from './knowledge-routing'
 import { evaluateFiberhomeCommandExecution } from './agent-execution-policy'
+import { recordTerminalRead } from './agent-terminal-read-control'
 
 function buildAddBookmarkParameters () {
   const typeProperties = {}
@@ -44,6 +45,11 @@ export const agentTools = [
           deviceModel: {
             type: 'string',
             description: 'Optional device model used to narrow matching knowledge.'
+          },
+          cliMode: {
+            type: 'string',
+            enum: ['linux-shell', 'ace-user', 'ace-diagnose', 'unknown'],
+            description: 'Optional CLI mode used only to narrow compatible command evidence.'
           }
         },
         required: ['query']
@@ -473,28 +479,50 @@ export async function executeToolCall (toolName, args, executionContext = {}) {
   switch (toolName) {
     case 'search_fiberhome_knowledge': {
       const evidence = await window.pre.runGlobalAsync('searchKnowledge', args.query, {
-        deviceModel: args.deviceModel
+        deviceModel: args.deviceModel,
+        cliMode: executionContext.terminalContext?.cliMode || args.cliMode || 'unknown'
       })
       return JSON.stringify(selectReliableEvidence(evidence))
     }
     case 'send_terminal_command': {
+      const executionTarget = executionContext.executionTarget
+      const currentTerminalContext = executionTarget?.tabId
+        ? store.mcpCaptureTerminalContext({ tabId: executionTarget.tabId })
+        : null
       const executionDecision = evaluateFiberhomeCommandExecution({
         ...executionContext,
-        command: args.command
+        command: args.command,
+        requestedTabId: args.tabId,
+        currentTerminalContext
       })
       if (!executionDecision.allowed) {
         throw new Error(executionDecision.reason)
       }
-      store.mcpSendTerminalCommand(args)
+      const commandArgs = executionTarget?.tabId
+        ? { ...args, tabId: executionTarget.tabId }
+        : args
+      store.mcpSendTerminalCommand(commandArgs)
       const idleResult = await store.mcpWaitForTerminalIdle({
-        tabId: args.tabId || store.activeTabId,
+        tabId: executionTarget?.tabId || args.tabId || store.activeTabId,
         timeout: 30000,
         lines: 100
       })
       return JSON.stringify(idleResult)
     }
-    case 'get_terminal_output':
-      return JSON.stringify(store.mcpGetTerminalOutput(args))
+    case 'get_terminal_output': {
+      const terminalReadTarget = executionContext.terminalReadTarget
+      const readArgs = terminalReadTarget?.tabId
+        ? { ...args, tabId: terminalReadTarget.tabId }
+        : args
+      const terminalOutput = store.mcpGetTerminalOutput(readArgs)
+      const readDecision = executionContext.terminalReadGuard
+        ? recordTerminalRead(executionContext.terminalReadGuard, terminalOutput)
+        : { allowed: true }
+      if (!readDecision.allowed) {
+        throw new Error(readDecision.reason)
+      }
+      return JSON.stringify(terminalOutput)
+    }
     case 'open_local_terminal':
       return JSON.stringify(store.mcpOpenLocalTerminal())
     case 'list_tabs':

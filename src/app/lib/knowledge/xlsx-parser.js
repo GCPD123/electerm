@@ -280,6 +280,159 @@ function buildUnits (worksheetName, rows) {
   return { sections, units }
 }
 
+function nonEmptyCells (values) {
+  return values
+    .map((value, index) => ({ index, value: String(value || '').trim() }))
+    .filter(cell => cell.value)
+}
+
+function isNumberedStep (value) {
+  return /^\d+(?:[.)、]|步骤)?$/.test(String(value || '').trim())
+}
+
+function isDiagnosticCommand (value) {
+  return /^\s*(?:display|show|ping|tracert|traceroute)\b/i.test(String(value || ''))
+}
+
+function redactWorkflowCommand (value) {
+  const ipAddress = '(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)){3}'
+  const source = String(value || '').trim()
+  return source
+    .replace(new RegExp(`\\bremote\\s+${ipAddress}`, 'gi'), 'remote <对端IP>')
+    .replace(new RegExp(`\\bsa\\s+${ipAddress}`, 'gi'), 'sa <源IP>')
+    .replace(new RegExp(`\\b(?:peer|destination)\\s+${ipAddress}`, 'gi'), match => {
+      const field = match.split(/\s+/)[0]
+      return `${field} <对端IP>`
+    })
+    .replace(new RegExp(`\\b${ipAddress}\\b`, 'g'), '<IP地址>')
+    .replace(/\bping\s+vc\s+raw\s+\d+\b/gi, 'ping vc raw <VCID>')
+    .replace(/\bte\s+tunnel\s+\d+\b/gi, 'te tunnel <隧道ID>')
+}
+
+function looksLikeConfigurationReference (value) {
+  const source = String(value || '').trim()
+  return source.includes('\n') || /^(?:vpws|interface|peer|tunnel|ip\s+address|destination)\b/im.test(source)
+}
+
+function redactWorkflowConfiguration (value) {
+  const ipAddress = '(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)){3}'
+  return String(value || '').split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => line
+      .replace(/^vpws\s+\S+/i, 'vpws <业务名>')
+      .replace(/^interface\s+.+$/i, 'interface <接入接口>')
+      .replace(new RegExp(`\\bpeer\\s+${ipAddress}`, 'gi'), 'peer <对端IP>')
+      .replace(new RegExp(`\\bdestination\\s+${ipAddress}`, 'gi'), 'destination <对端IP>')
+      .replace(new RegExp(`\\bip\\s+address\\s+${ipAddress}`, 'gi'), 'ip address <本端IP>')
+      .replace(new RegExp(`\\b${ipAddress}\\b`, 'g'), '<IP地址>')
+      .replace(/\bvcid\s+\S+/gi, 'vcid <VCID>')
+      .replace(/\bin-label\s+\S+/gi, 'in-label <入标签>')
+      .replace(/\bout-label\s+\S+/gi, 'out-label <出标签>')
+      .replace(/\bpw-class-template\s+\S+/gi, 'pw-class-template <PW类模板>')
+      .replace(/\bvlan-id\s+\S+/gi, 'vlan-id <VLAN ID>')
+      .replace(/\btunnel-te\s+\S+/gi, 'tunnel-te <隧道ID>')
+      .replace(/\b(?:primary|secondary)\s+path\s+\S+/gi, match => {
+        const role = match.split(/\s+/)[0]
+        return `${role} path <路径标识>`
+      })
+      .replace(/\bforward-pathid\s+\S+/gi, 'forward-pathid <正向路径ID>')
+      .replace(/\breverse-pathid\s+\S+/gi, 'reverse-pathid <反向路径ID>')
+      .replace(/\blsp-id\s+\S+/gi, 'lsp-id <LSP ID>')
+      .replace(/\btpoam-me\s+\S+/gi, 'tpoam-me <OAM ID>'))
+    .join('\n')
+}
+
+function buildTroubleshootingUnits (worksheetName, rows) {
+  const steps = rows.map(row => {
+    const { values } = toValues(row)
+    const cells = nonEmptyCells(values)
+    if (!isNumberedStep(cells[0]?.value) || !cells[1]?.value) return null
+    const commandCell = cells.slice(2).find(cell => isDiagnosticCommand(cell.value))
+    const configurationCell = cells.slice(2)
+      .find(cell => cell !== commandCell && looksLikeConfigurationReference(cell.value))
+    return {
+      step: cells[0].value,
+      description: cells[1].value,
+      command: commandCell?.value || '',
+      configurationReference: configurationCell?.value || '',
+      row: row.number
+    }
+  }).filter(Boolean)
+
+  if (steps.length < 2 || !steps.some(step => step.command)) {
+    return { sections: [], units: [] }
+  }
+
+  const section = `${worksheetName} troubleshooting workflow`
+  return {
+    sections: [{ title: section, row: steps[0].row }],
+    units: steps.map(step => {
+      const command = redactWorkflowCommand(step.command)
+      const configurationReference = redactWorkflowConfiguration(step.configurationReference)
+      return {
+        kind: 'troubleshooting',
+        workflowStep: step.step,
+        command,
+        commandView: '',
+        description: step.description,
+        usageScope: 'Troubleshooting workflow',
+        example: '',
+        expertNotes: '',
+        ...(configurationReference && { configurationReference }),
+        requiresParameters: Boolean(configurationReference || (command && command !== step.command)),
+        source: {
+          worksheet: worksheetName,
+          section,
+          row: step.row
+        }
+      }
+    })
+  }
+}
+
+const REFERENCE_COMMAND_STOP_WORDS = new Set(['to', 'find', 'the', 'when', 'for', 'is', 'and', 'then', 'all'])
+
+function extractReferenceCommand (value) {
+  const match = String(value || '').match(/\b(?:display|show|ping|tracert|traceroute)\s+[a-z0-9][a-z0-9._/:=-]*(?:\s+[a-z0-9][a-z0-9._/:=-]*){0,8}/i)
+  if (!match) return ''
+  const words = match[0].trim().split(/\s+/)
+  const stopIndex = words.findIndex((word, index) => index > 1 && REFERENCE_COMMAND_STOP_WORDS.has(word.toLowerCase()))
+  return words.slice(0, stopIndex === -1 ? words.length : stopIndex).join(' ')
+}
+
+function buildReferenceUnits (worksheetName, rows) {
+  const units = []
+  const section = `${worksheetName} reference`
+  for (const row of rows) {
+    const cells = nonEmptyCells(toValues(row).values)
+    if (!cells.length) continue
+    const referenceText = cells.map(cell => cell.value).join('\n')
+    const command = extractReferenceCommand(referenceText)
+    units.push({
+      kind: 'reference',
+      command,
+      commandView: '',
+      description: cells[0].value,
+      usageScope: 'Knowledge reference',
+      example: '',
+      expertNotes: '',
+      referenceText,
+      requiresParameters: Boolean(command && /<[^>]+>/.test(command)),
+      source: {
+        worksheet: worksheetName,
+        section,
+        row: row.number
+      }
+    })
+  }
+
+  return {
+    sections: units.length ? [{ title: section, row: units[0].source.row }] : [],
+    units
+  }
+}
+
 async function parseXlsxCommandWorkbook (filePath) {
   if (path.extname(filePath).toLowerCase() !== '.xlsx') {
     throw new Error('Only .xlsx files are supported')
@@ -307,7 +460,14 @@ async function parseXlsxCommandWorkbook (filePath) {
   for (const sheet of sheets) {
     const worksheetXml = entries.get(relationships.get(sheet.relationshipId))
     if (!worksheetXml) continue
-    const parsed = buildUnits(sheet.name, await parseRows(worksheetXml, sharedStrings))
+    const rows = await parseRows(worksheetXml, sharedStrings)
+    const commandWorkbook = buildUnits(sheet.name, rows)
+    const troubleshootingWorkbook = buildTroubleshootingUnits(sheet.name, rows)
+    const parsed = commandWorkbook.units.length
+      ? commandWorkbook
+      : troubleshootingWorkbook.units.length
+        ? troubleshootingWorkbook
+        : buildReferenceUnits(sheet.name, rows)
     worksheets.push({ name: sheet.name, sections: parsed.sections })
     units.push(...parsed.units)
   }

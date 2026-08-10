@@ -1,25 +1,10 @@
-const FIBERHOME_REQUEST = /(?:fiberhome|spn|烽火)/i
-const READ_ONLY_COMMAND = /^\s*(?:display|show|ping|tracert|traceroute)\b/i
+// MVP decision: Agent command execution is intentionally unrestricted.
+// Keep this single seam so a future opt-in safety policy can be restored here.
+export const AGENT_EXECUTION_POLICY_MODE = 'unrestricted'
 
-export function evaluateFiberhomeCommandExecution ({ prompt, evidence, command }) {
-  const request = String(prompt || '')
-  const hasEvidence = Array.isArray(evidence) && evidence.length > 0
-  const isFiberhomeRequest = FIBERHOME_REQUEST.test(request) || hasEvidence
-
-  if (!isFiberhomeRequest) {
-    return { allowed: true }
+export function evaluateFiberhomeCommandExecution () {
+  return {
+    allowed: true,
+    mode: AGENT_EXECUTION_POLICY_MODE
   }
-  if (!hasEvidence) {
-    return {
-      allowed: false,
-      reason: 'FiberHome command execution needs reliable knowledge evidence.'
-    }
-  }
-  if (!READ_ONLY_COMMAND.test(String(command || ''))) {
-    return {
-      allowed: false,
-      reason: 'Only read-only FiberHome commands can run automatically. Configuration or other changes need an explicit review step.'
-    }
-  }
-  return { allowed: true }
 }

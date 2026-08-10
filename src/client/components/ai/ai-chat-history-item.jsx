@@ -16,6 +16,11 @@ import {
 } from '@ant-design/icons'
 import { copy } from '../../common/clipboard'
 import { selectReliableEvidence } from './knowledge-routing'
+import {
+  buildWorkflowConfigurationResponse,
+  buildWorkflowOnlyResponse
+} from './workflow-response'
+import { buildModelTerminalContext } from '../../common/fiberhome-terminal-context'
 
 export default function AIChatHistoryItem ({ item }) {
   const [showOutput, setShowOutput] = useState(true)
@@ -118,8 +123,15 @@ export default function AIChatHistoryItem ({ item }) {
     }
   }, [item.id])
 
-  function buildKnowledgeMessages (evidence) {
-    if (!evidence.length) return conversationMessages
+  function buildKnowledgeMessages (evidence, terminalContext) {
+    const modelTerminalContext = buildModelTerminalContext(terminalContext)
+    const terminalInstruction = `Terminal context captured at submission (sanitized; no host, account, address, prompt text, or local identifiers): ${JSON.stringify(modelTerminalContext)}`
+    if (!evidence.length) {
+      return [...(conversationMessages || [
+        { role: 'system', content: buildRole() },
+        { role: 'user', content: prompt }
+      ]), { role: 'user', content: terminalInstruction }]
+    }
     const evidenceText = evidence.map((entry, index) => [
       `[E${index + 1}] ${entry.source.title} / ${entry.source.worksheet} / ${entry.source.section} / row ${entry.source.row}`,
       entry.content
@@ -129,14 +141,16 @@ export default function AIChatHistoryItem ({ item }) {
       { role: 'system', content: buildRole() },
       { role: 'user', content: prompt }
     ]
-    return [...messages, { role: 'user', content: instruction }]
+    return [...messages, { role: 'user', content: `${terminalInstruction}\n\n${instruction}` }]
   }
 
   const startRequest = useCallback(async () => {
     try {
       let knowledgeEvidence = []
       try {
-        const candidates = await window.pre.runGlobalAsync('searchKnowledge', prompt)
+        const candidates = await window.pre.runGlobalAsync('searchKnowledge', prompt, {
+          cliMode: item.terminalContext?.cliMode || 'unknown'
+        })
         knowledgeEvidence = selectReliableEvidence(candidates)
       } catch (error) {
         console.warn('Knowledge search failed:', error)
@@ -145,6 +159,15 @@ export default function AIChatHistoryItem ({ item }) {
       if (historyIndex !== -1) {
         window.store.aiChatHistory[historyIndex].knowledgeEvidence = knowledgeEvidence
         window.store.aiChatHistory = [...window.store.aiChatHistory]
+      }
+      const workflowResponse = buildWorkflowOnlyResponse(prompt, knowledgeEvidence) ||
+        buildWorkflowConfigurationResponse(prompt, knowledgeEvidence)
+      if (workflowResponse) {
+        if (historyIndex !== -1) {
+          window.store.aiChatHistory[historyIndex].response = workflowResponse
+          window.store.aiChatHistory = [...window.store.aiChatHistory]
+        }
+        return
       }
       const aiResponse = await window.pre.runGlobalAsync(
         'AIchat',
@@ -157,7 +180,7 @@ export default function AIChatHistoryItem ({ item }) {
         proxyAI,
         true,
         authHeaderNameAI,
-        buildKnowledgeMessages(knowledgeEvidence)
+        buildKnowledgeMessages(knowledgeEvidence, item.terminalContext)
       )
 
       if (aiResponse && aiResponse.error) {
@@ -311,6 +334,22 @@ export default function AIChatHistoryItem ({ item }) {
     )
   }
 
+  function renderTerminalContext () {
+    const context = item.terminalContext
+    if (!context) return null
+    const targetLabel = mode === 'agent' ? 'Agent target locked' : 'Ask context'
+    const cliModeLabel = context.cliMode === 'ace-user'
+      ? 'FiberHome user CLI'
+      : context.cliMode === 'ace-diagnose'
+        ? 'FiberHome diagnose CLI'
+        : context.cliMode
+    return (
+      <div className='agent-execution-policy-hint'>
+        <span>{targetLabel}: {cliModeLabel}, {context.interactionState}, confidence {context.confidence}</span>
+      </div>
+    )
+  }
+
   return (
     <div className='chat-history-item'>
       <div className='mg1y'>
@@ -319,6 +358,7 @@ export default function AIChatHistoryItem ({ item }) {
         </Tooltip>
       </div>
       {renderToolCalls()}
+      {renderTerminalContext()}
       {showOutput && <AIOutput item={item} />}
       {renderStopButton()}
     </div>

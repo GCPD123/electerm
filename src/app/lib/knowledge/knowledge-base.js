@@ -6,6 +6,7 @@ const { parseXlsxCommandWorkbook } = require('./xlsx-parser')
 
 const SCHEMA_VERSION = 1
 const TOKENIZER_VERSION = 'zh-cli-ngrams-v2'
+const PARSER_VERSION = 'xlsx-reference-workflow-v2'
 const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024
 const SENSITIVE_PATTERN = /(?:password|passwd|private\s*key|\btoken\b|用户名|密码|密钥|口令)/i
 const GENERIC_QUERY_TOKENS = new Set(['查看', '设备', '状态', '信息', '命令', '查询'])
@@ -47,9 +48,55 @@ function isCliToken (token) {
   return /[a-z0-9]/i.test(token)
 }
 
+function normalizeCommandCli (commandView) {
+  const value = String(commandView || '').trim().toLowerCase()
+  if (/(?:diagnose|diagnostic|诊断)/i.test(value)) return 'ace-diagnose'
+  if (/(?:linux|shell)/i.test(value)) return 'linux-shell'
+  if (/(?:user|normal|普通|用户)/i.test(value)) return 'ace-user'
+  return 'unknown'
+}
+
+function classifyOperation (command) {
+  const firstLine = String(command || '').trim().split(/\r?\n/)[0].toLowerCase()
+  if (/(?:running-config|current-configuration|show\s+configuration|display\s+configuration|password|passwd|secret|private\s*key|\btoken\b)/i.test(firstLine)) {
+    return 'sensitive-read'
+  }
+  if (/^(?:configure|config\b|interface\b|set\b|no\b|commit\b|save\b|write\b|delete\b|remove\b|reset\b|reboot\b)/i.test(firstLine)) {
+    return 'configuration'
+  }
+  if (/^(?:display|show|ping|tracert|traceroute)\b/i.test(firstLine)) {
+    return 'status-query'
+  }
+  return 'unknown'
+}
+
+function resolveRequestedCliMode (context) {
+  const cliMode = context.cliMode || normalizeCommandCli(context.commandView)
+  return ['linux-shell', 'ace-user', 'ace-diagnose'].includes(cliMode) ? cliMode : 'unknown'
+}
+
+function workflowGroupKey (unit) {
+  if (unit?.kind !== 'troubleshooting') return ''
+  return [unit.documentId, unit.source?.worksheet, unit.source?.section].join(':')
+}
+
+function compareWorkflowSteps (left, right) {
+  const leftStep = Number(left.unit.workflowStep)
+  const rightStep = Number(right.unit.workflowStep)
+  if (Number.isFinite(leftStep) && Number.isFinite(rightStep) && leftStep !== rightStep) {
+    return leftStep - rightStep
+  }
+  return left.unit.id.localeCompare(right.unit.id)
+}
+
 function unitContent (unit) {
   return [
-    `命令:\n${unit.command}`,
+    unit.kind && `知识类型: ${unit.kind === 'troubleshooting' ? '排障流程' : unit.kind}`,
+    unit.workflowStep && `排障步骤: ${unit.workflowStep}`,
+    unit.command && `命令:\n${unit.command}`,
+    unit.requiresParameters && '命令参数: 必须使用当前设备或业务的实际参数，不能直接执行示例模板',
+    unit.configurationReference && `配置核对模板 / Configuration reference (redacted; review only, do not execute):\n${unit.configurationReference}`,
+    unit.referenceText && `知识参考 / Reference:\n${unit.referenceText}`,
     unit.commandView && `命令视图: ${unit.commandView}`,
     unit.description && `说明: ${unit.description}`,
     unit.usageScope && `使用范围: ${unit.usageScope}`,
@@ -64,7 +111,7 @@ function sanitizeUnit (unit) {
   if (SENSITIVE_PATTERN.test(String(unit.command || ''))) {
     return { unit: null, warnings: ['command'] }
   }
-  for (const field of ['commandView', 'description', 'usageScope', 'example', 'expertNotes']) {
+  for (const field of ['commandView', 'description', 'usageScope', 'example', 'expertNotes', 'configurationReference', 'referenceText']) {
     if (SENSITIVE_PATTERN.test(String(unit[field] || ''))) {
       sanitized[field] = ''
       warnings.push(field)
@@ -82,7 +129,10 @@ function buildIndex (units) {
       ['commandView', unit.commandView, 2],
       ['usageScope', unit.usageScope, 1],
       ['example', unit.example, 1],
-      ['expertNotes', unit.expertNotes, 1]
+      ['expertNotes', unit.expertNotes, 1],
+      ['configurationReference', unit.configurationReference, 3],
+      ['referenceText', unit.referenceText, 3],
+      ['workflowStep', unit.workflowStep, 1]
     ]
     for (const [field, value, weight] of fields) {
       for (const token of tokenize(value)) {
@@ -155,8 +205,15 @@ function createKnowledgeBase ({ dataDirectory, parser = parseXlsxCommandWorkbook
       throw new Error(`Knowledge document exceeds ${MAX_DOCUMENT_BYTES} byte limit`)
     }
     const sha256 = await hashFile(filePath)
-    const existing = state.documents.find(document => document.sha256 === sha256)
-    if (existing) return { duplicate: existing }
+    const existingByPath = state.documents.find(document => document.sourcePath === filePath)
+    const existingByHash = state.documents.find(document => document.sha256 === sha256)
+    if (existingByPath?.sha256 === sha256 && existingByPath.parserVersion === PARSER_VERSION) {
+      return { duplicate: existingByPath }
+    }
+    if (!existingByPath && existingByHash?.parserVersion === PARSER_VERSION) {
+      return { duplicate: existingByHash }
+    }
+    const existing = existingByPath || existingByHash
 
     const parsed = await parser(filePath)
     const parsedUnits = Array.isArray(parsed.units) ? parsed.units : []
@@ -168,6 +225,11 @@ function createKnowledgeBase ({ dataDirectory, parser = parseXlsxCommandWorkbook
     })))
     if (!safeUnits.length) throw new Error('No safe command units were found in the XLSX document')
 
+    if (existing) {
+      state.documents = state.documents.filter(document => document.id !== existing.id)
+      state.units = state.units.filter(unit => unit.documentId !== existing.id)
+    }
+
     const id = `doc-${sha256.slice(0, 24)}`
     const document = {
       id,
@@ -177,6 +239,7 @@ function createKnowledgeBase ({ dataDirectory, parser = parseXlsxCommandWorkbook
       mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       importedAt: new Date().toISOString(),
       indexVersion: TOKENIZER_VERSION,
+      parserVersion: PARSER_VERSION,
       status: 'ready',
       productFamily: options.productFamily || 'SPN',
       deviceModels: options.deviceModels || [],
@@ -216,7 +279,8 @@ function createKnowledgeBase ({ dataDirectory, parser = parseXlsxCommandWorkbook
   async function searchKnowledge (query, context = {}) {
     await ensureInitialized()
     const matches = new Map()
-    for (const token of tokenize(query)) {
+    const queryTokens = tokenize(query)
+    for (const token of queryTokens) {
       const posting = index.get(token)
       if (!posting) continue
       for (const [unitId, match] of posting) {
@@ -231,7 +295,37 @@ function createKnowledgeBase ({ dataDirectory, parser = parseXlsxCommandWorkbook
       }
     }
 
+    for (const document of state.documents) {
+      const matchingTitleTokens = queryTokens.filter(token => tokenize(document.title).includes(token))
+      if (!matchingTitleTokens.length) continue
+      for (const unit of state.units) {
+        if (unit.documentId !== document.id || unit.kind !== 'troubleshooting') continue
+        const current = matches.get(unit.id) || { score: 0, reasons: new Set() }
+        current.score += matchingTitleTokens.length * 4
+        for (const token of matchingTitleTokens) current.reasons.add(`document:${token}`)
+        matches.set(unit.id, current)
+      }
+    }
+
+    const workflowScores = new Map()
+    for (const [unitId, match] of matches) {
+      const unit = state.units.find(value => value.id === unitId)
+      const group = workflowGroupKey(unit)
+      if (!group) continue
+      workflowScores.set(group, Math.max(workflowScores.get(group) || 0, match.score))
+    }
+    for (const unit of state.units) {
+      const group = workflowGroupKey(unit)
+      const score = workflowScores.get(group)
+      if (!score) continue
+      const current = matches.get(unit.id) || { score: 0, reasons: new Set() }
+      current.score = Math.max(current.score, score)
+      current.reasons.add('workflow:related-step')
+      matches.set(unit.id, current)
+    }
+
     const requestedModels = new Set(context.deviceModels || (context.deviceModel ? [context.deviceModel] : []))
+    const requestedCliMode = resolveRequestedCliMode(context)
     return [...matches.entries()]
       .map(([unitId, match]) => ({ unit: state.units.find(value => value.id === unitId), match }))
       .filter(({ unit }) => unit)
@@ -240,12 +334,23 @@ function createKnowledgeBase ({ dataDirectory, parser = parseXlsxCommandWorkbook
         const document = state.documents.find(value => value.id === unit.documentId)
         return !document.deviceModels.length || document.deviceModels.some(model => requestedModels.has(model))
       })
-      .sort((left, right) => right.match.score - left.match.score || left.unit.id.localeCompare(right.unit.id))
+      .filter(({ unit }) => {
+        if (requestedCliMode === 'unknown') return true
+        const unitCliMode = normalizeCommandCli(unit.commandView)
+        return unitCliMode === 'unknown' || unitCliMode === requestedCliMode
+      })
+      .sort((left, right) => right.match.score - left.match.score || compareWorkflowSteps(left, right))
       .slice(0, 8)
       .map(({ unit, match }) => {
         const document = state.documents.find(value => value.id === unit.documentId)
         return {
           chunkId: unit.id,
+          command: unit.command,
+          commandView: unit.commandView || '',
+          knowledgeType: unit.kind || 'command',
+          workflowStep: unit.workflowStep || '',
+          description: unit.description || '',
+          configurationReference: unit.configurationReference || '',
           content: unit.content,
           score: match.score,
           matchReasons: [...match.reasons].sort(),
@@ -259,7 +364,15 @@ function createKnowledgeBase ({ dataDirectory, parser = parseXlsxCommandWorkbook
           applicability: {
             productFamily: [document.productFamily].filter(Boolean),
             deviceModels: document.deviceModels,
-            softwareVersions: document.softwareVersions
+            softwareVersions: document.softwareVersions,
+            commandView: unit.commandView || '',
+            cliModes: [normalizeCommandCli(unit.commandView)],
+            operationClass: classifyOperation(unit.command)
+          },
+          actionability: {
+            requiresParameters: Boolean(unit.requiresParameters),
+            canAutoExecute: Boolean(unit.command) && !unit.requiresParameters &&
+              classifyOperation(unit.command) === 'status-query'
           }
         }
       })
@@ -307,6 +420,7 @@ function createKnowledgeBase ({ dataDirectory, parser = parseXlsxCommandWorkbook
 }
 
 module.exports = {
+  PARSER_VERSION,
   TOKENIZER_VERSION,
   createKnowledgeBase,
   tokenize

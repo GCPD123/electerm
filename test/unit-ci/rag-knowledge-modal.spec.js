@@ -10,5 +10,7 @@ describe('Knowledge base modal', () => {
 
     assert.equal(source.includes('window.api.openDialog'), true)
     assert.equal(source.includes('window.pre.openDialog'), false)
+    assert.equal(source.includes('knowledge units from'), true)
+    assert.equal(source.includes('Skipped unchanged documents'), true)
   })
 })
